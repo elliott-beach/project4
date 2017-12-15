@@ -270,7 +270,7 @@ ssize_t scullBuffer_write(struct file *filp, const char __user *buf, size_t coun
   }
   up(&dev->sem);
 
-  countWritten = count + 4;
+  countWritten = count;
 
   //printk(KERN_DEBUG "scullBuffer: new pos= %lld, new size= %d \n", (int)dev->nextEmpty, (int)dev->size);
   up(&dev->full);
