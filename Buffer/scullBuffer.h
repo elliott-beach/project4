@@ -29,6 +29,8 @@
 struct scull_buffer {
     void *bufferPtr; /* pointer to the data buffer */
     struct semaphore sem;  /* mutual exclusion semaphore     */
+    struct semaphore empty;
+    struct semaphore full;
     int readerCnt; /* count of no of readers accessing the device */
     int writerCnt; /* count of no of writers accessing the device */
     int front;
