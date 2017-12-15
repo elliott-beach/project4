@@ -1,6 +1,9 @@
-modules
+modules/*
 other
 *.o
 *.ko
 *.o.cmd
 *.ko.cmd
+.tmp_versions
+*.mod.c
+modules.order
