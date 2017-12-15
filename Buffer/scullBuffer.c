@@ -16,11 +16,11 @@ struct scull_buffer scullBufferDevice;/* instance of the scullBuffer structure *
 
 /* file ops struct indicating which method is called for which io operation */
 struct file_operations scullBuffer_fops = {
-    .owner =    THIS_MODULE,
-    .read =     scullBuffer_read,
-    .write =    scullBuffer_write,
-    .open =     scullBuffer_open,
-    .release =  scullBuffer_release,
+      .owner =    THIS_MODULE,
+      .read =     scullBuffer_read,
+      .write =    scullBuffer_write,
+      .open =     scullBuffer_open,
+      .release =  scullBuffer_release,
 };
 
 /*
@@ -29,46 +29,46 @@ struct file_operations scullBuffer_fops = {
  */
 int scull_init_module(void)
 {
-    int result = 0;
-    dev_t dev = 0;
+      int result = 0;
+      dev_t dev = 0;
 
-    /* first check if someone has passed a major number */
-    if (scull_major) {
-	dev = MKDEV(scull_major, scull_minor);
-	result = register_chrdev_region(dev, SCULL_NR_DEVS, "scullBuffer");
-    } else {
-	/* we need a dynamically allocated major number..*/
-	result = alloc_chrdev_region(&dev, scull_minor, SCULL_NR_DEVS,
-				     "scullBuffer");
-	scull_major = MAJOR(dev);
-    }
-    if (result < 0) {
-	printk(KERN_WARNING "scullBuffer: can't get major %d\n", scull_major);
-	return result;
-    }
+      /* first check if someone has passed a major number */
+      if (scull_major) {
+	  dev = MKDEV(scull_major, scull_minor);
+	  result = register_chrdev_region(dev, SCULL_NR_DEVS, "scullBuffer");
+      } else {
+	  /* we need a dynamically allocated major number..*/
+	  result = alloc_chrdev_region(&dev, scull_minor, SCULL_NR_DEVS,
+				       "scullBuffer");
+	  scull_major = MAJOR(dev);
+      }
+      if (result < 0) {
+	  printk(KERN_WARNING "scullBuffer: can't get major %d\n", scull_major);
+	  return result;
+      }
 
-    /* alloc space for the buffer (scull_size bytes) */
-    scullBufferDevice.bufferPtr = kmalloc( scull_size*516 , GFP_KERNEL);
-    if(scullBufferDevice.bufferPtr == NULL)
-    {
-	scull_cleanup_module();
-	return -ENOMEM;
-    }
+      /* alloc space for the buffer (scull_size bytes) */
+      scullBufferDevice.bufferPtr = kmalloc( scull_size*516 , GFP_KERNEL);
+      if(scullBufferDevice.bufferPtr == NULL)
+      {
+	  scull_cleanup_module();
+	  return -ENOMEM;
+      }
 
-    /* Init the count vars */
-    scullBufferDevice.readerCnt = 0;
-    scullBufferDevice.writerCnt = 0;
-    scullBufferDevice.front = 0;
-    scullBufferDevice.nextEmpty = 0;
-    scullBufferDevice.size = 0;
+      /* Init the count vars */
+      scullBufferDevice.readerCnt = 0;
+      scullBufferDevice.writerCnt = 0;
+      scullBufferDevice.front = 0;
+      scullBufferDevice.nextEmpty = 0;
+      scullBufferDevice.size = 0;
 
-    /* Initialize the semaphore*/
-    sema_init(&scullBufferDevice.sem, 1);
+      /* Initialize the semaphore*/
+      sema_init(&scullBufferDevice.sem, 1);
 
-    /* Finally, set up the c dev. Now we can start accepting calls! */
-    scull_setup_cdev(&scullBufferDevice);
-    printk(KERN_DEBUG "scullBuffer: Done with init module ready for requests buffer size= %d\n",scull_size);
-    return result;
+      /* Finally, set up the c dev. Now we can start accepting calls! */
+      scull_setup_cdev(&scullBufferDevice);
+      printk(KERN_DEBUG "scullBuffer: Done with init module ready for requests buffer size= %d\n",scull_size);
+      return result;
 }
 
 /*
@@ -77,15 +77,15 @@ int scull_init_module(void)
  */
 static void scull_setup_cdev(struct scull_buffer *dev)
 {
-    int err, devno = MKDEV(scull_major, scull_minor);
+      int err, devno = MKDEV(scull_major, scull_minor);
 
-  cdev_init(&dev->cdev, &scullBuffer_fops);
-  dev->cdev.owner = THIS_MODULE;
-  dev->cdev.ops = &scullBuffer_fops;
-  err = cdev_add (&dev->cdev, devno, 1);
-  /* Fail gracefully if need be */
-  if (err)
-    printk(KERN_NOTICE "Error %d adding scullBuffer\n", err);
+      cdev_init(&dev->cdev, &scullBuffer_fops);
+      dev->cdev.owner = THIS_MODULE;
+      dev->cdev.ops = &scullBuffer_fops;
+      err = cdev_add (&dev->cdev, devno, 1);
+      /* Fail gracefully if need be */
+      if (err)
+	  printk(KERN_NOTICE "Error %d adding scullBuffer\n", err);
 }
 
 /*
@@ -94,19 +94,19 @@ static void scull_setup_cdev(struct scull_buffer *dev)
  */
 void scull_cleanup_module(void)
 {
-    dev_t devno = MKDEV(scull_major, scull_minor);
+      dev_t devno = MKDEV(scull_major, scull_minor);
 
-    /* if buffer was allocated, get rid of it */
-    if(scullBufferDevice.bufferPtr != NULL)
-	kfree(scullBufferDevice.bufferPtr);
+      /* if buffer was allocated, get rid of it */
+      if(scullBufferDevice.bufferPtr != NULL)
+	  kfree(scullBufferDevice.bufferPtr);
 
-    /* Get rid of our char dev entries */
-    cdev_del(&scullBufferDevice.cdev);
+      /* Get rid of our char dev entries */
+      cdev_del(&scullBufferDevice.cdev);
 
-    /* cleanup_module is never called if registering failed */
-    unregister_chrdev_region(devno, SCULL_NR_DEVS);
+      /* cleanup_module is never called if registering failed */
+      unregister_chrdev_region(devno, SCULL_NR_DEVS);
 
-    printk(KERN_DEBUG "scullBuffer: Done with cleanup module \n");
+      printk(KERN_DEBUG "scullBuffer: Done with cleanup module \n");
 }
 
 module_init(scull_init_module);
@@ -117,21 +117,21 @@ module_exit(scull_cleanup_module);
  */
 int scullBuffer_open(struct inode *inode, struct file *filp)
 {
-    struct scull_buffer *dev;
-    /* get and store the container scull_buffer */
-    dev = container_of(inode->i_cdev, struct scull_buffer, cdev);
-    filp->private_data = dev;
+      struct scull_buffer *dev;
+      /* get and store the container scull_buffer */
+      dev = container_of(inode->i_cdev, struct scull_buffer, cdev);
+      filp->private_data = dev;
 
-    if (down_interruptible(&dev->sem))
-	return -ERESTARTSYS;
+      if (down_interruptible(&dev->sem))
+	  return -ERESTARTSYS;
 
-    if (filp->f_mode & FMODE_READ)
-	dev->readerCnt++;
-    if (filp->f_mode & FMODE_WRITE)
-	dev->writerCnt++;
+      if (filp->f_mode & FMODE_READ)
+	  dev->readerCnt++;
+      if (filp->f_mode & FMODE_WRITE)
+	  dev->writerCnt++;
 
-    up(&dev->sem);
-    return 0;
+      up(&dev->sem);
+      return 0;
 }
 
 /* 
@@ -139,17 +139,17 @@ int scullBuffer_open(struct inode *inode, struct file *filp)
  */
 int scullBuffer_release(struct inode *inode, struct file *filp)
 {
-    struct scull_buffer *dev = (struct scull_buffer *)filp->private_data;
-    if (down_interruptible(&dev->sem) )
-	return -ERESTARTSYS;
+      struct scull_buffer *dev = (struct scull_buffer *)filp->private_data;
+      if (down_interruptible(&dev->sem) )
+	  return -ERESTARTSYS;
 
-    if (filp->f_mode & FMODE_READ)
-	dev->readerCnt--;
-    if (filp->f_mode & FMODE_WRITE)
-	dev->writerCnt--;
+      if (filp->f_mode & FMODE_READ)
+	  dev->readerCnt--;
+      if (filp->f_mode & FMODE_WRITE)
+	  dev->writerCnt--;
 
-    up(&dev->sem);
-    return 0;
+      up(&dev->sem);
+      return 0;
 }
 
 /*
@@ -157,96 +157,95 @@ int scullBuffer_release(struct inode *inode, struct file *filp)
  */
 ssize_t scullBuffer_read(struct file *filp, char __user *buf, size_t count, loff_t *f_pos)
 {
-    struct scull_buffer *dev = (struct scull_buffer *)filp->private_data;
-    ssize_t countRead = 0;
-    int len = 0;
-    int res = 0;
+      struct scull_buffer *dev = (struct scull_buffer *)filp->private_data;
+      ssize_t countRead = 0;
+      int len = 0;
+      int res = 0;
 
-    /* get exclusive access */
-    if (down_interruptible(&dev->sem))
-	return -ERESTARTSYS;
+      /* get exclusive access */
+      if (down_interruptible(&dev->sem))
+	  return -ERESTARTSYS;
 
-    printk(KERN_DEBUG "scullBuffer: read called count= %d\n", count);
-    printk(KERN_DEBUG "scullBuffer: front = %d \n", dev->front);
+      printk(KERN_DEBUG "scullBuffer: read called count= %d\n", count);
+      printk(KERN_DEBUG "scullBuffer: front = %d \n", dev->front);
 
-    /* Check if the buffer is empty */
-    if(dev->front >= dev->nextEmpty) {
-	printk(KERN_DEBUG "Buffer is empty\n");
-	goto out;
-    }
+      /* Check if the buffer is empty */
+      if(dev->front >= dev->nextEmpty) {
+	  printk(KERN_DEBUG "Buffer is empty\n");
+	  goto out;
+      }
   
-    /* Read a max of 512 bytes */
-    if( count > 512)
-	count = 512;
+      /* Read a max of 512 bytes */
+      if( count > 512)
+	  count = 512;
 
-    /* Read the size of the block first */
-    res = kstrtoint(dev->bufferPtr + (dev->front % (scull_size*516)), 10, &len);
-    printk(KERN_DEBUG "scullBuffer: Item length is %d\n", len);
-    if(res < 0) {
-	return -EINVAL;
-    }
+      /* Read the size of the block first */
+      res = kstrtoint(dev->bufferPtr + (dev->front % (scull_size*516)), 10, &len);
+      printk(KERN_DEBUG "scullBuffer: Item length is %d\n", len);
+      if(res < 0) {
+	  return -EINVAL;
+      }
 
-    printk(KERN_DEBUG "scullBuffer: reading %d bytes\n", (int)count);
-    /* copy data to user space buffer */
-    if (copy_to_user(buf, dev->bufferPtr + (dev->front % (scull_size*516)) + 4, len)) {
-	countRead = -EFAULT;
-	goto out;
-    }
-    countRead = len;
+      printk(KERN_DEBUG "scullBuffer: reading %d bytes\n", (int)count);
+      /* copy data to user space buffer */
+      if (copy_to_user(buf, dev->bufferPtr + (dev->front % (scull_size*516)) + 4, len)) {
+	  countRead = -EFAULT;
+	  goto out;
+      }
+      countRead = len;
   
-    /* Move the front of the buffer up */
-    dev->front += 516;
+      /* Move the front of the buffer up */
+      dev->front += 516;
   
-    printk(KERN_DEBUG "scullBuffer: new front: %d\n", dev->front);
-    /* now we're done release the semaphore */
+      printk(KERN_DEBUG "scullBuffer: new front: %d\n", dev->front);
+      /* now we're done release the semaphore */
 out:
-    up(&dev->sem);
-    return countRead;
+      up(&dev->sem);
+      return countRead;
 }
 
 /*
  * Implementation of the write system call
  */
-ssize_t scullBuffer_write(struct file *filp, const char __user *buf, size_t count,
-			  loff_t *f_pos)
+ssize_t scullBuffer_write(struct file *filp, const char __user *buf, size_t count, loff_t *f_pos)
 {
-    int countWritten = 0;
-    struct scull_buffer *dev = (struct scull_buffer *)filp->private_data;
+      int countWritten = 0;
+      struct scull_buffer *dev = (struct scull_buffer *)filp->private_data;
 
-    printk(KERN_DEBUG "scullBuffer: Calling write\n");
-    if (down_interruptible(&dev->sem))
-	return -ERESTARTSYS;
+      printk(KERN_DEBUG "scullBuffer: Calling write\n");
+      if (down_interruptible(&dev->sem))
+	  return -ERESTARTSYS;
 
-    printk(KERN_DEBUG "scullBuffer: write called count= %d\n", (int)count);
-    printk(KERN_DEBUG "scullBuffer: cur pos= %d, size= %d \n", (int)dev->nextEmpty, (int)dev->size);
+      printk(KERN_DEBUG "scullBuffer: write called count= %d\n", (int)count);
+      printk(KERN_DEBUG "scullBuffer: cur pos= %d, size= %d \n", (int)dev->nextEmpty, (int)dev->size);
   
-    /* Check if the buffer is full */
-    if((dev->nextEmpty - dev->front) >= (scull_size*516)) {
-	printk(KERN_DEBUG "scullBuffer: Buffer is full\n");
-	goto out;
-    }
+      /* Check if the buffer is full */
+      if((dev->nextEmpty - dev->front) >= (scull_size*516)) {
+	  printk(KERN_DEBUG "scullBuffer: Buffer is full\n");
+	  goto out;
+      }
   
-    /* write a maximum of 512 bytes */
-    if(count > 512)
-	count = 512;
-    printk(KERN_DEBUG "scullBuffer: writing %d bytes \n", (int)count);
+      /* write a maximum of 512 bytes */
+      if(count > 512)
+	  count = 512;
+      printk(KERN_DEBUG "scullBuffer: writing %d bytes \n", (int)count);
 
-    /* Write the size of the item to the buffer */
-    snprintf(dev->bufferPtr + (dev->nextEmpty % (scull_size*516)), 5, "%d", (int)count);
+      /* Write the size of the item to the buffer */
+      snprintf(dev->bufferPtr + (dev->nextEmpty % (scull_size*516)), 5, "%d", (int)count);
 
-    /* write data to the buffer */
-    if (copy_from_user(dev->bufferPtr + (dev->nextEmpty % (scull_size*516)) + 4, buf, count)) {
-	countWritten = -EFAULT;
-	goto out;
-    }
-    countWritten = count + 4;
+      /* write data to the buffer */
+      if (copy_from_user(dev->bufferPtr + (dev->nextEmpty % (scull_size*516)) + 4, buf, count)) {
+	  countWritten = -EFAULT;
+	  goto out;
+      }
+      countWritten = count + 4;
   
-    /* update the size of the device */
-    dev->size += 516;
-    /* update the next empty position */
-    dev->nextEmpty += 516;
-    printk(KERN_DEBUG "scullBuffer: new pos= %lld, new size= %d \n", (int)dev->nextEmpty, (int)dev->size);
+      /* update the size of the device */
+      dev->size += 516;
+      /* update the next empty position */
+      dev->nextEmpty += 516;
+      printk(KERN_DEBUG "scullBuffer: new pos= %lld, new size= %d \n", (int)dev->nextEmpty, (int)dev->size);
 out:
-    up(&dev->sem);
-    return countWritten;
+      up(&dev->sem);
+      return countWritten;
 }
