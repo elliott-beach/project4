@@ -27,12 +27,14 @@
 #define SCULL_SIZE 4096 /* default size of buffer */
 
 struct scull_buffer {
-	void *bufferPtr; /* pointer to the data buffer */
-	struct semaphore sem;  /* mutual exclusion semaphore     */
-	int readerCnt; /* count of no of readers accessing the device */
-	int writerCnt; /* count of no of writers accessing the device */
-	int size; /* amount of data held in the buffer currently */
-	struct cdev cdev;	  /* Char device structure		*/
+    void *bufferPtr; /* pointer to the data buffer */
+    struct semaphore sem;  /* mutual exclusion semaphore     */
+    int readerCnt; /* count of no of readers accessing the device */
+    int writerCnt; /* count of no of writers accessing the device */
+    int front;
+    int nextEmpty;
+    int size; /* amount of data held in the buffer currently */
+    struct cdev cdev;	  /* Char device structure		*/
 };
 
 /*
