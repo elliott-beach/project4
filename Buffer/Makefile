@@ -38,6 +38,7 @@ experiment:
 	./test
 
 publish:
+	-rm project4.tar.gz
 	tar -czf project4.tar.gz *.c *.h *.py Makefile readme.txt
 
 
