@@ -240,6 +240,17 @@ ssize_t scullBuffer_write(struct file *filp, const char __user *buf, size_t coun
     return 0;
   }
 
+  char kbuf[count];
+
+  // Copy from user can fail if buf is an invalid address (e.g. a segmentation fault).
+  // In this case, we want to handle the error without altering the bounded buffer.
+  // Further reading: https://stackoverflow.com/questions/23433936/return-value-of-copy-from-user
+  if(copy_from_user(kbuf, buf, count)){
+    printk(KERN_DEBUG "scullBuffer: write: copy_from_user failed\n");
+    up(&dev->sem);
+    return -1 * EFAULT;
+  }
+
   int currEmpty;
   currEmpty = dev->nextEmpty;
 
@@ -248,7 +259,9 @@ ssize_t scullBuffer_write(struct file *filp, const char __user *buf, size_t coun
 
   /* update the size of the device */
   dev->size += 516;
+
   up(&dev->sem);
+
 
   /* Get semaphore for writing to buffer */
   if(down_interruptible(&dev->empty))
@@ -270,11 +283,8 @@ ssize_t scullBuffer_write(struct file *filp, const char __user *buf, size_t coun
   snprintf(dev->bufferPtr + (currEmpty % (scull_size*516)), 5, "%d", (int)count);
 
   /* write data to the buffer */
-  if (copy_from_user(dev->bufferPtr + (currEmpty % (scull_size*516)) + 4, buf, count)) {
-    up(&dev->sem);
-    up(&dev->full);
-    return EFAULT;
-  }
+  memcpy(dev->bufferPtr + (currEmpty % (scull_size*516)) + 4, kbuf, count);
+
   up(&dev->sem);
   up(&dev->full);
   return count;
