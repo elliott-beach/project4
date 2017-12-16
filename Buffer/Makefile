@@ -19,7 +19,7 @@ modules_install:
 	$(MAKE) -C $(KERNELDIR) M=$(PWD) modules_install
 
 clean:
-	rm -rf *.o *~ core .depend .*.cmd *.ko *.mod.c .tmp_versions
+	rm -rf *.o *~ core .depend .*.cmd *.ko *.mod.c .tmp_versions consumer producer test
 
 .PHONY: modules modules_install clean
 
@@ -29,12 +29,16 @@ else
 endif
 
 experiment:
+	make
 	sudo ./unload.py
 	sudo ./load.py scull_size=3
 	gcc producer.c -o producer
 	gcc consumer.c -o consumer
 	gcc test.c -o test
 	./test
+
+publish:
+	tar -czf project4.tar.gz *.c *.h *.py Makefile readme.txt
 
 
 
