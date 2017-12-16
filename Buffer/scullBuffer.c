@@ -160,10 +160,7 @@ int scullBuffer_release(struct inode *inode, struct file *filp)
 ssize_t scullBuffer_read(struct file *filp, char __user *buf, size_t count, loff_t *f_pos)
 {
   struct scull_buffer *dev = (struct scull_buffer *)filp->private_data;
-  int currFront = 0;
-  ssize_t countRead = 0;
   int len = 0;
-  int res = 0;
 
   /* Atomically check if empty */
   if (down_interruptible(&dev->sem))
@@ -175,49 +172,55 @@ ssize_t scullBuffer_read(struct file *filp, char __user *buf, size_t count, loff
     up(&dev->sem);
     return 0;
   }
+
+  int currFront;
   currFront = dev->front;
+
   /* Move the front of the buffer up */
   dev->front += 516;
+  printk(KERN_DEBUG "scullBuffer: new front: %d\n", dev->front);
+
   up(&dev->sem);
 
-  /* Get mutex for accessing buffer */
+  /* Get semaphore for reading form buffer */
   if (down_interruptible(&dev->full))
     return -ERESTARTSYS;
 
   printk(KERN_DEBUG "scullBuffer: read called count= %d\n", count);
   printk(KERN_DEBUG "scullBuffer: front = %d \n", currFront);
 
-  /* Read a max of 512 bytes */
-  if( count > 512)
-    count = 512;
 
   /* Get mutex for accessing buffer */
   if (down_interruptible(&dev->sem))
     return -ERESTARTSYS;
 
   /* Read the size of the block first */
+  int res;
   res = kstrtoint(dev->bufferPtr + (currFront % (scull_size*516)), 10, &len);
   printk(KERN_DEBUG "scullBuffer: Item length is %d\n", len);
   if(res < 0) {
     up(&dev->sem);
+    up(&dev->empty);
     return -EINVAL;
   }
 
+  /* Read a max of len bytes */
+  if(len > 512) len = 512;
+  if(count > len) count = len;
+
   printk(KERN_DEBUG "scullBuffer: reading %d bytes\n", (int)count);
   /* copy data to user space buffer */
-  if (copy_to_user(buf, dev->bufferPtr + (currFront % (scull_size*516)) + 4, len)) {
-    countRead = -EFAULT;
+  if (copy_to_user(buf, dev->bufferPtr + (currFront % (scull_size*516)) + 4, count)) {
     up(&dev->sem);
-    return 0;
+    up(&dev->empty);
+    return -EFAULT;
   }
-  up(&dev->sem);
 
-  countRead = len;
-
-  printk(KERN_DEBUG "scullBuffer: new front: %d\n", dev->front);
   /* now we're done release the semaphore */
+  up(&dev->sem);
   up(&dev->empty);
-  return countRead;
+
+  return count;
 }
 
 /*
@@ -225,9 +228,7 @@ ssize_t scullBuffer_read(struct file *filp, char __user *buf, size_t count, loff
  */
 ssize_t scullBuffer_write(struct file *filp, const char __user *buf, size_t count, loff_t *f_pos)
 {
-  int countWritten = 0;
   struct scull_buffer *dev = (struct scull_buffer *)filp->private_data;
-  int currEmpty = 0;
 
   if (down_interruptible(&dev->sem))
     return -ERESTARTSYS;
@@ -238,13 +239,18 @@ ssize_t scullBuffer_write(struct file *filp, const char __user *buf, size_t coun
     up(&dev->sem);
     return 0;
   }
+
+  int currEmpty;
   currEmpty = dev->nextEmpty;
+
   /* update the next empty position */
   dev->nextEmpty += 516;
+
   /* update the size of the device */
   dev->size += 516;
   up(&dev->sem);
 
+  /* Get semaphore for writing to buffer */
   if(down_interruptible(&dev->empty))
     return -ERESTARTSYS;
 
@@ -252,27 +258,24 @@ ssize_t scullBuffer_write(struct file *filp, const char __user *buf, size_t coun
   printk(KERN_DEBUG "scullBuffer: cur pos= %d, size= %d \n", (int)currEmpty, (int)dev->size);
 
   /* write a maximum of 512 bytes */
-  if(count > 512)
-    count = 512;
+  if(count > 512) count = 512;
+
   printk(KERN_DEBUG "scullBuffer: writing %d bytes \n", (int)count);
 
   /* Acquire mutex for accessing buffer */
   if(down_interruptible(&dev->sem))
     return -ERESTARTSYS;
+
   /* Write the size of the item to the buffer */
   snprintf(dev->bufferPtr + (currEmpty % (scull_size*516)), 5, "%d", (int)count);
 
   /* write data to the buffer */
   if (copy_from_user(dev->bufferPtr + (currEmpty % (scull_size*516)) + 4, buf, count)) {
-    countWritten = -EFAULT;
     up(&dev->sem);
-    return countWritten;
+    up(&dev->full);
+    return EFAULT;
   }
   up(&dev->sem);
-
-  countWritten = count;
-
-  //printk(KERN_DEBUG "scullBuffer: new pos= %lld, new size= %d \n", (int)dev->nextEmpty, (int)dev->size);
   up(&dev->full);
-  return countWritten;
+  return count;
 }
