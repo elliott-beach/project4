@@ -28,4 +28,14 @@ else
     obj-m := scullBuffer.o
 endif
 
+experiment:
+	sudo ./unload.py
+	sudo ./load.py scull_size=3
+	gcc producer.c -o producer
+	gcc consumer.c -o consumer
+	gcc test.c -o test
+	./test
+
+
+
 

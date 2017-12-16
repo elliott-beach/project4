@@ -4,21 +4,19 @@
 #include <stdlib.h>
 
 int main() {
-  int produce = 1;
-  char *argv_consume[] = {"./consumer", NULL};
-  char *argv_produce[] = {"./producer", NULL};
-  int pid;
+  char num [1024];
+  char *argv_consume[] = {"./consumer", num, NULL};
+  char *argv_produce[] = {"./producer", num, NULL};
 
   for(int i = 0; i < 100; i++) {
-    pid = fork();
+    int pid = fork();
     if(pid == 0) {
-      if(produce) {
+      sprintf(num, "%d", i/2);
+      if(i & 1) {
 	execv("./producer", argv_produce);
-      }
-      else {
+      } else {
 	execv("./consumer", argv_consume);
       }
     }
-    produce = 1 - produce;
   }
 }
